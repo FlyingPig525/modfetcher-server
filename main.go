@@ -132,35 +132,15 @@ func findUser(name string, pass string) (*User, error) {
 	return u, nil
 }
 
-func userMods(w http.ResponseWriter, req *http.Request) {
-	name, pass, ok := req.BasicAuth()
-	if !ok {
-		WMalformedBasicAuthError(w)
-		return
-	}
-	u, err := findUser(name, pass)
-	if err != nil {
-		WInvalidCredentialsError(w)
-		return
-	}
-	println("got mods for", name)
+func userMods(w http.ResponseWriter, req *http.Request, u *User) {
+	println("got mods for", u.username)
 	user, _ := json.Marshal(*u)
 	_, _ = fmt.Fprintln(w, string(user))
 }
 
-func getIteration(w http.ResponseWriter, req *http.Request) {
-	name, pass, ok := req.BasicAuth()
-	if !ok {
-		WMalformedBasicAuthError(w)
-		return
-	}
-	u, err := findUser(name, pass)
-	if err != nil {
-		WInvalidCredentialsError(w)
-		return
-	}
+func getIteration(w http.ResponseWriter, req *http.Request, u *User) {
 	iteration, _ := json.Marshal(u.Iteration)
-	println("found iteration for user", name, string(iteration))
+	println("found iteration for user", u.username, string(iteration))
 	_, _ = fmt.Fprintln(w, string(iteration))
 }
 
@@ -189,21 +169,11 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 	go saveData()
 }
 
-func saveMods(w http.ResponseWriter, req *http.Request) {
-	name, pass, ok := req.BasicAuth()
-	if !ok {
-		WMalformedBasicAuthError(w)
-		return
-	}
+func saveMods(w http.ResponseWriter, req *http.Request, user *User) {
 	// dont really care if the body doesnt end in \n
 	body, _ := bufio.NewReader(req.Body).ReadString('\n')
-	user, err := findUser(name, pass)
-	if err != nil {
-		WInvalidCredentialsError(w)
-		return
-	}
 	var mods []Mod
-	err = json.Unmarshal([]byte(body), &mods)
+	err := json.Unmarshal([]byte(body), &mods)
 	mods = slices.DeleteFunc(
 		mods, func(mod Mod) bool {
 			return mod.ModId == "geode.loader"
@@ -214,7 +184,7 @@ func saveMods(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	println("updating saved mods for", name)
+	println("updating saved mods for", user.username)
 	println(body)
 	i := NewIteration(user)
 	user.Iteration = i
@@ -246,6 +216,22 @@ func post(fn func(w http.ResponseWriter, req *http.Request)) http.HandlerFunc {
 	}
 }
 
+func authorized(fn func(w http.ResponseWriter, req *http.Request, user *User)) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		name, pass, ok := req.BasicAuth()
+		if !ok {
+			WMalformedBasicAuthError(w)
+			return
+		}
+		user, err := findUser(name, pass)
+		if err != nil {
+			WInvalidCredentialsError(w)
+			return
+		}
+		fn(w, req, user)
+	}
+}
+
 func saveData() {
 	println("saving")
 	d := data.InwardData()
@@ -256,6 +242,10 @@ func saveData() {
 	}
 }
 
+func heartbeat(w http.ResponseWriter, req *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+
 func main() {
 	d, err := LoadData("data.json")
 	if err != nil {
@@ -264,10 +254,14 @@ func main() {
 		d = &Data{make([]*User, 0)}
 	}
 	data = d
-	http.HandleFunc("/load", get(userMods))
-	http.HandleFunc("/iteration", get(getIteration))
+	// authed
+	http.HandleFunc("/load", get(authorized(userMods)))
+	http.HandleFunc("/iteration", get(authorized(getIteration)))
+	http.HandleFunc("/save", post(authorized(saveMods)))
+	// unauthed
 	http.HandleFunc("/create", post(createUser))
-	http.HandleFunc("/save", post(saveMods))
+	http.HandleFunc("/", heartbeat)
+
 	fmt.Println("Listening at localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
