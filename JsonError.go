@@ -20,11 +20,27 @@ func (j JsonError) Write(w http.ResponseWriter) {
 }
 
 func InvalidCredentialsError() JsonError {
-	return JsonError{Err: "invalid username and password hash"}
+	return JsonError{Err: "invalid argon credentials"}
 }
 func WInvalidCredentialsError(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusUnauthorized)
 	InvalidCredentialsError().Write(w)
+}
+
+func UnknownAuthError() JsonError {
+	return JsonError{Err: "unknown auth error"}
+}
+func WUnknownAuthError(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusInternalServerError)
+	UnknownAuthError().Write(w)
+}
+
+func ArgonError(e string) JsonError {
+	return JsonError{Err: e}
+}
+func WArgonError(e string, w http.ResponseWriter) {
+	w.WriteHeader(http.StatusUnauthorized)
+	ArgonError(e).Write(w)
 }
 
 func MalformedBasicAuthError() JsonError {

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"slices"
+	"strconv"
 	"time"
 )
 
@@ -54,24 +55,24 @@ func (d *InwardData) Data() Data {
 var data *Data = nil
 
 type User struct {
-	username  string
-	passHash  string
+	Id        int `json:"id"`
+	token     string
 	Mods      []Mod     `json:"mods"`
 	Iteration Iteration `json:"iteration"`
 }
 
-// InwardUser is just a user with username and passHash marshalled
+// InwardUser is just a user with token marshalled
 type InwardUser struct {
-	Username  string    `json:"username"`
-	PassHash  string    `json:"passHash"`
+	Id        int       `json:"id"`
+	Token     string    `json:"token"`
 	Mods      []Mod     `json:"mods"`
 	Iteration Iteration `json:"iteration"`
 }
 
 func (u *User) InwardUser() InwardUser {
 	return InwardUser{
-		Username:  u.username,
-		PassHash:  u.passHash,
+		Id:        u.Id,
+		Token:     u.token,
 		Mods:      u.Mods,
 		Iteration: u.Iteration,
 	}
@@ -79,8 +80,8 @@ func (u *User) InwardUser() InwardUser {
 
 func (u *InwardUser) User() *User {
 	return &User{
-		username:  u.Username,
-		passHash:  u.PassHash,
+		Id:        u.Id,
+		token:     u.Token,
 		Mods:      u.Mods,
 		Iteration: u.Iteration,
 	}
@@ -98,29 +99,25 @@ func ZeroIteration() Iteration {
 	return Iteration{Iteration: 0, EpochSeconds: time.Now().Unix()}
 }
 
-func (u *User) auth(user string, pass string) bool {
-	return user == u.username && pass == u.passHash
-}
-
 type Mod struct {
 	ModId   string `json:"modId"`
 	Version string `json:"version"`
 	Config  *any   `json:"config"`
 }
 
-func (d *Data) anyName(username string) bool {
+func (d *Data) anyId(id int) bool {
 	for _, user := range d.Users {
-		if user.username == username {
+		if user.Id == id {
 			return true
 		}
 	}
 	return false
 }
 
-func findUser(name string, pass string) (*User, error) {
+func findUser(id int) (*User, error) {
 	var u *User = nil
 	for _, user := range data.Users {
-		if !user.auth(name, pass) {
+		if user.Id != id {
 			continue
 		}
 		u = user
@@ -133,38 +130,53 @@ func findUser(name string, pass string) (*User, error) {
 }
 
 func userMods(w http.ResponseWriter, req *http.Request, u *User) {
-	println("got mods for", u.username)
+	println("got mods for", u.token)
 	user, _ := json.Marshal(*u)
 	_, _ = fmt.Fprintln(w, string(user))
 }
 
 func getIteration(w http.ResponseWriter, req *http.Request, u *User) {
 	iteration, _ := json.Marshal(u.Iteration)
-	println("found iteration for user", u.username, string(iteration))
+	println("found iteration for user", u.token, string(iteration))
 	_, _ = fmt.Fprintln(w, string(iteration))
 }
 
 func createUser(w http.ResponseWriter, req *http.Request) {
-	name, pass, ok := req.BasicAuth()
+	idStr, token, ok := req.BasicAuth()
 	if !ok {
 		WMalformedBasicAuthError(w)
 		return
 	}
-	if data.anyName(name) {
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		WMalformedBasicAuthError(w)
+		return
+	}
+	check, err := CheckToken(id, token)
+	if err != nil {
+		println("Unknown argon error occurred!", err)
+		WUnknownAuthError(w)
+		return
+	}
+	if !check.Valid {
+		println("Argon error occurred", check.Cause)
+		WArgonError(check.Cause, w)
+	}
+	if data.anyId(id) {
 		WUserExistsError(w)
 		return
 	}
 
 	user := &User{
-		username:  name,
-		passHash:  pass,
+		Id:        id,
+		token:     token,
 		Mods:      make([]Mod, 0),
 		Iteration: ZeroIteration(),
 	}
 	data.Users = append(data.Users, user)
 	j, _ := json.Marshal(user)
 	w.WriteHeader(http.StatusCreated)
-	println("Created user", name, string(j))
+	println("Created user", id, token, string(j))
 	_, _ = fmt.Fprintln(w, string(j))
 	go saveData()
 }
@@ -184,7 +196,7 @@ func saveMods(w http.ResponseWriter, req *http.Request, user *User) {
 		return
 	}
 
-	println("updating saved mods for", user.username)
+	println("updating saved mods for", user.token)
 	println(body)
 	i := NewIteration(user)
 	user.Iteration = i
@@ -218,17 +230,38 @@ func post(fn func(w http.ResponseWriter, req *http.Request)) http.HandlerFunc {
 
 func authorized(fn func(w http.ResponseWriter, req *http.Request, user *User)) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		name, pass, ok := req.BasicAuth()
+		idStr, token, ok := req.BasicAuth()
 		if !ok {
 			WMalformedBasicAuthError(w)
 			return
 		}
-		user, err := findUser(name, pass)
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			WMalformedBasicAuthError(w)
+			return
+		}
+		check, err := CheckToken(id, token)
+		if err != nil {
+			println("Unknown argon error occurred!", err)
+			WUnknownAuthError(w)
+			return
+		}
+		if !check.Valid {
+			println("Argon error occurred", check.Cause)
+			WArgonError(check.Cause, w)
+		}
+		user, err := findUser(id)
 		if err != nil {
 			WInvalidCredentialsError(w)
 			return
 		}
 		fn(w, req, user)
+		//check, err := findUser(name, pass)
+		//if err != nil {
+		//	WInvalidCredentialsError(w)
+		//	return
+		//}
+		//fn(w, req, check)
 	}
 }
 
