@@ -282,8 +282,8 @@ func heartbeat(w http.ResponseWriter, req *http.Request) {
 func main() {
 	d, err := LoadData("data.json")
 	if err != nil {
-		println(err.Error())
-		println("Creating new data object")
+		fmt.Println(err.Error())
+		fmt.Println("Creating new data object")
 		d = &Data{make([]*User, 0)}
 	}
 	data = d

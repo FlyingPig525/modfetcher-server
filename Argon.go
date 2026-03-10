@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httputil"
 )
 
 const ArgonServer string = "https://argon.globed.dev"
@@ -15,20 +16,30 @@ type ArgonCheck struct {
 }
 
 func CheckToken(id int, token string) (*ArgonCheck, error) {
-	c := http.DefaultClient
-	resp, err := c.Get(fmt.Sprintf("%s/v1/validation/check?account_id=%d&authtoken=%s", ArgonServer, id, token))
+	resp, err := checkRequest(id, token)
 	if err != nil {
+		println("Check request returned error", err.Error())
 		return nil, err
 	}
-	var bytes []byte
-	_, err = bufio.NewReader(resp.Body).Read(bytes)
-	if err != nil {
-		return nil, err
+	dump, err := httputil.DumpResponse(resp, true)
+	println(string(dump))
+	if resp.StatusCode != 200 {
+		return nil, ArgonError(fmt.Sprint("non 200 response:", resp.StatusCode))
 	}
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Scan()
+	bodyStr := scanner.Text()
 	var res ArgonCheck
-	err = json.Unmarshal(bytes, &res)
+	println(bodyStr)
+	err = json.Unmarshal([]byte(bodyStr), &res)
 	if err != nil {
+		println("Unmarshal returned error", err.Error())
 		return nil, err
 	}
 	return &res, nil
+}
+
+func checkRequest(id int, token string) (resp *http.Response, err error) {
+	c := http.DefaultClient
+	return c.Get(fmt.Sprintf("%s/v1/validation/check?account_id=%d&authtoken=%s", ArgonServer, id, token))
 }

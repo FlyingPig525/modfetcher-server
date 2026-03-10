@@ -1,3 +1,3 @@
-module flyingpig525.github.io/modfetcher-server
+module modfetcher-server
 
-go 1.25
+go 1.26
