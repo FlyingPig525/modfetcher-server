@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/httputil"
 )
 
 const ArgonServer string = "https://argon.globed.dev"
@@ -21,8 +20,6 @@ func CheckToken(id int, token string) (*ArgonCheck, error) {
 		println("Check request returned error", err.Error())
 		return nil, err
 	}
-	dump, err := httputil.DumpResponse(resp, true)
-	println(string(dump))
 	if resp.StatusCode != 200 {
 		return nil, ArgonError(fmt.Sprint("non 200 response:", resp.StatusCode))
 	}
