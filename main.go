@@ -266,7 +266,7 @@ func authorized(fn func(w http.ResponseWriter, req *http.Request, user *User)) h
 }
 
 func saveData() {
-	fmt.Println("saving")
+	Info("saving")
 	d := data.InwardData()
 	j, _ := json.Marshal(d)
 	err := os.WriteFile("data.json", j, 0666)
