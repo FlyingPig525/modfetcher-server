@@ -6,12 +6,15 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"slices"
 	"strconv"
 	"time"
 )
+
+var logger *slog.Logger
 
 type Data struct {
 	Users []*User `json:"users"`
@@ -20,13 +23,13 @@ type Data struct {
 func LoadData(fileName string) (*Data, error) {
 	file, err := os.ReadFile(fileName)
 	if err != nil {
-		fmt.Println("err in read", err.Error())
+		Error("err in read", err.Error())
 		return nil, err
 	}
 	var data InwardData
 	err = json.Unmarshal(file, &data)
 	if err != nil {
-		fmt.Println("err in unmarshal", err.Error())
+		Error("err in unmarshal", err.Error())
 		return nil, err
 	}
 	d := data.Data()
@@ -130,14 +133,14 @@ func findUser(id int) (*User, error) {
 }
 
 func userMods(w http.ResponseWriter, req *http.Request, u *User) {
-	fmt.Println("got mods for", u.token)
+	Info("got mods for", u.token)
 	user, _ := json.Marshal(*u)
 	_, _ = fmt.Fprintln(w, string(user))
 }
 
 func getIteration(w http.ResponseWriter, req *http.Request, u *User) {
 	iteration, _ := json.Marshal(u.Iteration)
-	fmt.Println("found iteration for user", u.token, string(iteration))
+	Info("found iteration for user", u.token, string(iteration))
 	_, _ = fmt.Fprintln(w, string(iteration))
 }
 
@@ -154,12 +157,11 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 	}
 	check, err := CheckToken(id, token)
 	if err != nil {
-		fmt.Println("Unknown argon error occurred!", err)
+		Error("Unknown argon error occurred!", err)
 		WUnknownAuthError(w)
 		return
 	}
 	if !check.Valid {
-		fmt.Println("Argon error occurred", check.Cause)
 		WArgonError(check.Cause, w)
 	}
 	if data.anyId(id) {
@@ -176,7 +178,7 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 	data.Users = append(data.Users, user)
 	j, _ := json.Marshal(user)
 	w.WriteHeader(http.StatusCreated)
-	fmt.Println("Created user", id, token, string(j))
+	Info("Created user", id, token, string(j))
 	_, _ = fmt.Fprintln(w, string(j))
 	go saveData()
 }
@@ -196,7 +198,7 @@ func saveMods(w http.ResponseWriter, req *http.Request, user *User) {
 		return
 	}
 
-	fmt.Println("updating saved mods for", user.token)
+	Info("updating saved mods for", user.token)
 	i := NewIteration(user)
 	user.Iteration = i
 	user.Mods = mods
@@ -241,12 +243,11 @@ func authorized(fn func(w http.ResponseWriter, req *http.Request, user *User)) h
 		}
 		check, err := CheckToken(id, token)
 		if err != nil {
-			fmt.Println("Unknown argon error occurred!", err)
+			Error("Unknown argon error occurred!", err)
 			WUnknownAuthError(w)
 			return
 		}
 		if !check.Valid {
-			fmt.Println("Argon error occurred", check.Cause)
 			WArgonError(check.Cause, w)
 		}
 		user, err := findUser(id)
@@ -279,11 +280,33 @@ func heartbeat(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func Info(a ...any) {
+	Info(fmt.Sprint(a))
+}
+
+func Error(a ...any) {
+	Error(fmt.Sprint(a))
+}
+
 func main() {
-	d, err := LoadData("data.json")
+	stdoutHandler := slog.NewTextHandler(os.Stdout, nil)
+	var logName []byte
+	time.Now().AppendFormat(logName, "2006-01-02_15:04:05.log")
+	file, err := os.Create(string(logName))
 	if err != nil {
 		fmt.Println(err.Error())
-		fmt.Println("Creating new data object")
+		file, err = os.Open(string(logName))
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+	}
+	fileHandler := slog.NewTextHandler(file, nil)
+	logger = slog.New(slog.NewMultiHandler(stdoutHandler, fileHandler))
+	d, err := LoadData("data.json")
+	if err != nil {
+		Error(err.Error())
+		Info("Creating new data object")
 		d = &Data{make([]*User, 0)}
 	}
 	data = d
@@ -295,6 +318,6 @@ func main() {
 	http.HandleFunc("/create", post(createUser))
 	http.HandleFunc("/", heartbeat)
 
-	fmt.Println("Listening at localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	Info("Listening at localhost:80")
+	log.Fatal(http.ListenAndServe(":80", nil))
 }

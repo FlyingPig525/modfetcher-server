@@ -17,7 +17,7 @@ type ArgonCheck struct {
 func CheckToken(id int, token string) (*ArgonCheck, error) {
 	resp, err := checkRequest(id, token)
 	if err != nil {
-		println("Check request returned error", err.Error())
+		Error("Check request returned error", err.Error())
 		return nil, err
 	}
 	if resp.StatusCode != 200 {
@@ -27,10 +27,9 @@ func CheckToken(id int, token string) (*ArgonCheck, error) {
 	scanner.Scan()
 	bodyStr := scanner.Text()
 	var res ArgonCheck
-	println(bodyStr)
 	err = json.Unmarshal([]byte(bodyStr), &res)
 	if err != nil {
-		println("Unmarshal returned error", err.Error())
+		Error("Unmarshal returned error", err.Error())
 		return nil, err
 	}
 	return &res, nil
