@@ -20,13 +20,13 @@ type Data struct {
 func LoadData(fileName string) (*Data, error) {
 	file, err := os.ReadFile(fileName)
 	if err != nil {
-		println("err in read", err.Error())
+		fmt.Println("err in read", err.Error())
 		return nil, err
 	}
 	var data InwardData
 	err = json.Unmarshal(file, &data)
 	if err != nil {
-		println("err in unmarshal", err.Error())
+		fmt.Println("err in unmarshal", err.Error())
 		return nil, err
 	}
 	d := data.Data()
@@ -130,14 +130,14 @@ func findUser(id int) (*User, error) {
 }
 
 func userMods(w http.ResponseWriter, req *http.Request, u *User) {
-	println("got mods for", u.token)
+	fmt.Println("got mods for", u.token)
 	user, _ := json.Marshal(*u)
 	_, _ = fmt.Fprintln(w, string(user))
 }
 
 func getIteration(w http.ResponseWriter, req *http.Request, u *User) {
 	iteration, _ := json.Marshal(u.Iteration)
-	println("found iteration for user", u.token, string(iteration))
+	fmt.Println("found iteration for user", u.token, string(iteration))
 	_, _ = fmt.Fprintln(w, string(iteration))
 }
 
@@ -154,12 +154,12 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 	}
 	check, err := CheckToken(id, token)
 	if err != nil {
-		println("Unknown argon error occurred!", err)
+		fmt.Println("Unknown argon error occurred!", err)
 		WUnknownAuthError(w)
 		return
 	}
 	if !check.Valid {
-		println("Argon error occurred", check.Cause)
+		fmt.Println("Argon error occurred", check.Cause)
 		WArgonError(check.Cause, w)
 	}
 	if data.anyId(id) {
@@ -176,7 +176,7 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 	data.Users = append(data.Users, user)
 	j, _ := json.Marshal(user)
 	w.WriteHeader(http.StatusCreated)
-	println("Created user", id, token, string(j))
+	fmt.Println("Created user", id, token, string(j))
 	_, _ = fmt.Fprintln(w, string(j))
 	go saveData()
 }
@@ -196,8 +196,7 @@ func saveMods(w http.ResponseWriter, req *http.Request, user *User) {
 		return
 	}
 
-	println("updating saved mods for", user.token)
-	println(body)
+	fmt.Println("updating saved mods for", user.token)
 	i := NewIteration(user)
 	user.Iteration = i
 	user.Mods = mods
@@ -242,12 +241,12 @@ func authorized(fn func(w http.ResponseWriter, req *http.Request, user *User)) h
 		}
 		check, err := CheckToken(id, token)
 		if err != nil {
-			println("Unknown argon error occurred!", err)
+			fmt.Println("Unknown argon error occurred!", err)
 			WUnknownAuthError(w)
 			return
 		}
 		if !check.Valid {
-			println("Argon error occurred", check.Cause)
+			fmt.Println("Argon error occurred", check.Cause)
 			WArgonError(check.Cause, w)
 		}
 		user, err := findUser(id)
@@ -266,7 +265,7 @@ func authorized(fn func(w http.ResponseWriter, req *http.Request, user *User)) h
 }
 
 func saveData() {
-	println("saving")
+	fmt.Println("saving")
 	d := data.InwardData()
 	j, _ := json.Marshal(d)
 	err := os.WriteFile("data.json", j, 0666)
@@ -276,6 +275,7 @@ func saveData() {
 }
 
 func heartbeat(w http.ResponseWriter, req *http.Request) {
+	fmt.Println("Heartbeat")
 	w.WriteHeader(http.StatusOK)
 }
 
