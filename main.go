@@ -276,33 +276,39 @@ func saveData() {
 }
 
 func heartbeat(w http.ResponseWriter, req *http.Request) {
-	fmt.Println("Heartbeat")
+	Info("Heartbeat")
 	w.WriteHeader(http.StatusOK)
 }
 
 func Info(a ...any) {
-	Info(fmt.Sprint(a))
+	slog.Info(fmt.Sprint(a))
 }
 
 func Error(a ...any) {
-	Error(fmt.Sprint(a))
+	slog.Error(fmt.Sprint(a))
 }
 
 func main() {
 	stdoutHandler := slog.NewTextHandler(os.Stdout, nil)
-	var logName []byte
-	time.Now().AppendFormat(logName, "2006-01-02_15:04:05.log")
-	file, err := os.Create(string(logName))
+	logName := string(time.Now().Local().AppendFormat([]byte("logs/"), "2006-01-02_15:04:05")) + ".log"
+	err := os.Mkdir("logs", 0750)
+	if err != nil && !os.IsExist(err) {
+		panic(err)
+	}
+	file, err := os.Create(logName)
 	if err != nil {
 		fmt.Println(err.Error())
-		file, err = os.Open(string(logName))
-		if err != nil {
-			fmt.Println(err.Error())
-			return
-		}
+		return
 	}
 	fileHandler := slog.NewTextHandler(file, nil)
-	logger = slog.New(slog.NewMultiHandler(stdoutHandler, fileHandler))
+	recentFile, err := os.Create("logs/recent.log")
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	recentFileHandler := slog.NewTextHandler(recentFile, nil)
+	logger = slog.New(slog.NewMultiHandler(stdoutHandler, fileHandler, recentFileHandler))
+	slog.SetDefault(logger)
 	d, err := LoadData("data.json")
 	if err != nil {
 		Error(err.Error())
