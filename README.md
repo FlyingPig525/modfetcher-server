@@ -17,7 +17,7 @@ git clone https://github.com/FlyingPig525/modfetcher-server.git
 Build:
 
 ```shell
-go build modfetcher-server
+go build github.com/FlyingPig525/modfetcher-server
 ```
 
 Run:

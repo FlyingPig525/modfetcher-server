@@ -11,6 +11,7 @@ import (
 	"os"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -186,6 +187,10 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 func saveMods(w http.ResponseWriter, req *http.Request, user *User) {
 	// dont really care if the body doesnt end in \n
 	body, _ := bufio.NewReader(req.Body).ReadString('\n')
+	if strings.TrimSpace(body) == "" {
+		WMissingBodyError(w)
+		return
+	}
 	var mods []Mod
 	err := json.Unmarshal([]byte(body), &mods)
 	mods = slices.DeleteFunc(
@@ -309,6 +314,7 @@ func main() {
 	recentFileHandler := slog.NewTextHandler(recentFile, nil)
 	logger = slog.New(slog.NewMultiHandler(stdoutHandler, fileHandler, recentFileHandler))
 	slog.SetDefault(logger)
+
 	d, err := LoadData("data.json")
 	if err != nil {
 		Error(err.Error())

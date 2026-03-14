@@ -1,0 +1,19 @@
+services:
+  server:
+    build: .
+    ports:
+      - "80:80"
+    volumes:
+      - logs:/server/logs
+    restart: on-failure:3
+    develop:
+      watch:
+        - action: sync+restart
+          path: .
+          target: /server
+        - action: rebuild
+          path: go.mod
+
+
+volumes:
+  logs:
