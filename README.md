@@ -29,6 +29,12 @@ sudo ./modfetcher-server # sudo is optional, but may be required to bind a port
 To bind a different port, open `main.go` and modify the 2nd to last line:
 - Bind port 8080: `log.Fatal(http.ListenAndServe(":80", nil))` -> `log.Fatal(http.ListenAndServe(":8080", nil))`
 
+#### Or use Docker
+
+```shell
+docker compose up --build
+```
+
 #### Logs
 
 Upon execution, the software logs output to stdout and 2 files. Log files can be found in the
