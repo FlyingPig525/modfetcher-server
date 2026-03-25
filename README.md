@@ -6,6 +6,7 @@ It is a simple go server meant only to store and send data about users' mods.
 ### Building & Running
 
 To build and run this repository you need:
+
 - golang 1.26
 
 Clone the repository:
@@ -27,6 +28,7 @@ sudo ./modfetcher-server # sudo is optional, but may be required to bind a port
 ```
 
 To bind a different port, open `main.go` and modify the 2nd to last line:
+
 - Bind port 8080: `log.Fatal(http.ListenAndServe(":80", nil))` -> `log.Fatal(http.ListenAndServe(":8080", nil))`
 
 #### Or use Docker

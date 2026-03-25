@@ -98,3 +98,11 @@ func WIdenticalModsError(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusNotModified)
 	IdenticalModsError().Write(w)
 }
+
+func UserModificationError() JsonError {
+	return JsonError{Err: "there was an unknown error during user creation"}
+}
+func WUserModificationError(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusInternalServerError)
+	UserModificationError().Write(w)
+}

@@ -3,9 +3,16 @@ services:
     build: .
     ports:
       - "80:80"
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
     volumes:
       - logs:/server/logs
     restart: on-failure:3
+    depends_on:
+      postgres:
+        condition: service_healthy
     develop:
       watch:
         - action: sync+restart
@@ -13,7 +20,19 @@ services:
           target: /server
         - action: rebuild
           path: go.mod
-
+  postgres:
+    image: postgres
+    restart: always
+    shm_size: 128mb
+    env_file:
+      - .env
+    ports:
+      - "8236:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "sh -c 'pg_isready -U ${POSTGRES_USER}'" ]
+      interval: 1s
+      retries: 10
+      timeout: 1s
 
 volumes:
   logs:
