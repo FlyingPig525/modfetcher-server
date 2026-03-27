@@ -19,78 +19,11 @@ import (
 
 var logger *slog.Logger
 
-// type Data struct {
-//     Users []*User `json:"users"`
-// }
-//
-// func LoadData(fileName string) (*Data, error) {
-//     file, err := os.ReadFile(fileName)
-//     if err != nil {
-//         Error("err in read", err.Error())
-//         return nil, err
-//     }
-//     var data InwardData
-//     err = json.Unmarshal(file, &data)
-//     if err != nil {
-//         Error("err in unmarshal", err.Error())
-//         return nil, err
-//     }
-//     d := data.Data()
-//     return &d, nil
-// }
-//
-// type InwardData struct {
-//     Users []InwardUser `json:"users"`
-// }
-//
-// func (d *Data) InwardData() InwardData {
-//     var users = make([]InwardUser, 0)
-//     for _, user := range d.Users {
-//         users = append(users, user.InwardUser())
-//     }
-//     return InwardData{Users: users}
-// }
-// func (d *InwardData) Data() Data {
-//     var users = make([]*User, 0)
-//     for _, user := range d.Users {
-//         users = append(users, user.User())
-//     }
-//     return Data{Users: users}
-// }
-//
-// var data *Data = nil
-
 type User struct {
 	Id        int `json:"id"`
 	token     string
 	Mods      []Mod     `json:"mods"`
 	Iteration Iteration `json:"iteration"`
-}
-
-// InwardUser is just a user with token marshalled
-type InwardUser struct {
-	Id        int       `json:"id"`
-	Token     string    `json:"token"`
-	Mods      []Mod     `json:"mods"`
-	Iteration Iteration `json:"iteration"`
-}
-
-func (u *User) InwardUser() InwardUser {
-	return InwardUser{
-		Id:        u.Id,
-		Token:     u.token,
-		Mods:      u.Mods,
-		Iteration: u.Iteration,
-	}
-}
-
-func (u *InwardUser) User() *User {
-	return &User{
-		Id:        u.Id,
-		token:     u.Token,
-		Mods:      u.Mods,
-		Iteration: u.Iteration,
-	}
 }
 
 type Iteration struct {
