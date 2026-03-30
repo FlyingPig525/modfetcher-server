@@ -20,23 +20,9 @@ import (
 var logger *slog.Logger
 
 type User struct {
-	Id        int `json:"id"`
-	token     string
-	Mods      []Mod     `json:"mods"`
-	Iteration Iteration `json:"iteration"`
-}
-
-type Iteration struct {
-	Iteration int16 `json:"iteration"`
-	// EpochSeconds is useless and not used (I forgot about it when I was writing the client mod)
-	EpochSeconds int64 `json:"epochSeconds"`
-}
-
-func NewIteration(u *User) Iteration {
-	return Iteration{Iteration: u.Iteration.Iteration + 1, EpochSeconds: time.Now().Unix()}
-}
-func ZeroIteration() Iteration {
-	return Iteration{Iteration: 0, EpochSeconds: time.Now().Unix()}
+	Id    int `json:"id"`
+	token string
+	Mods  []Mod `json:"mods"`
 }
 
 type Mod struct {
@@ -61,12 +47,6 @@ func userMods(w http.ResponseWriter, req *http.Request, u *User) {
 	Info("got mods for", u.token)
 	user, _ := json.Marshal(*u)
 	_, _ = fmt.Fprintln(w, string(user))
-}
-
-func getIteration(w http.ResponseWriter, req *http.Request, u *User) {
-	iteration, _ := json.Marshal(u.Iteration)
-	Info("found iteration for user", u.token, string(iteration))
-	_, _ = fmt.Fprintln(w, string(iteration))
 }
 
 func createUser(w http.ResponseWriter, req *http.Request) {
@@ -95,10 +75,9 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 	}
 
 	user := &User{
-		Id:        id,
-		token:     token,
-		Mods:      make([]Mod, 0),
-		Iteration: ZeroIteration(),
+		Id:    id,
+		token: token,
+		Mods:  make([]Mod, 0),
 	}
 	err = insertUser(req.Context(), user)
 	if err != nil {
@@ -137,8 +116,6 @@ func saveMods(w http.ResponseWriter, req *http.Request, user *User) {
 		WUserModificationError(w)
 		return
 	}
-	i := NewIteration(user)
-	user.Iteration = i
 	user.Mods = mods
 	j, _ := json.Marshal(user)
 	_, _ = fmt.Fprintln(w, string(j))
@@ -275,7 +252,6 @@ func main() {
 	// data = d
 	// authed
 	http.HandleFunc("/load", get(authorized(userMods)))
-	http.HandleFunc("/iteration", get(authorized(getIteration)))
 	http.HandleFunc("/save", post(authorized(saveMods)))
 	// unauthed
 	http.HandleFunc("/create", post(createUser))
@@ -304,7 +280,6 @@ func queryUser(ctx context.Context, id int) (*User, error) {
 	var userId int32
 	var token string
 	var modString []byte
-	var iteration int16 = 0
 	err := row.Scan(&userId, &token, &modString)
 	if err != nil {
 		return nil, err
@@ -313,7 +288,7 @@ func queryUser(ctx context.Context, id int) (*User, error) {
 	if err = json.Unmarshal(modString, &mods); err != nil {
 		return nil, err
 	}
-	return &User{int(userId), token, mods, Iteration{iteration, 0}}, nil
+	return &User{int(userId), token, mods}, nil
 }
 
 func updateUserMods(ctx context.Context, id int, mods []Mod) error {
