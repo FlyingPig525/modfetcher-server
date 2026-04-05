@@ -68,6 +68,7 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 	}
 	if !check.Valid {
 		WArgonError(check.Cause, w)
+		return
 	}
 	if idExists(req.Context(), id) {
 		WUserExistsError(w)
