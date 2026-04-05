@@ -18,13 +18,13 @@ git clone https://github.com/FlyingPig525/modfetcher-server.git
 Build:
 
 ```shell
-go build github.com/FlyingPig525/modfetcher-server
+go build github.com/FlyingPig525/modfetcher-server-bin
 ```
 
 Run:
 
 ```shell
-sudo ./modfetcher-server # sudo is optional, but may be required to bind a port
+sudo ./modfetcher-server-bin # sudo is optional, but may be required to bind a port
 ```
 
 To bind a different port, open `main.go` and modify the 2nd to last line:

@@ -28,6 +28,8 @@ services:
       - .env
     ports:
       - "8236:5432"
+    volumes:
+      - dbData:/var/lib/postgresql/data
     healthcheck:
       test: [ "CMD-SHELL", "sh -c 'pg_isready -U ${POSTGRES_USER}'" ]
       interval: 1s
@@ -36,3 +38,4 @@ services:
 
 volumes:
   logs:
+  dbData:
