@@ -1,4 +1,4 @@
-FROM golang:latest
+FROM golang:alpine
 LABEL authors="FlyingPig525"
 
 WORKDIR /server
