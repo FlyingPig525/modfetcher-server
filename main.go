@@ -29,6 +29,7 @@ type Mod struct {
 	ModId   string `json:"modId"`
 	Version string `json:"version"`
 	Config  *any   `json:"config"`
+	Data    *any   `json:"data"`
 }
 
 func idExists(ctx context.Context, id int) bool {
